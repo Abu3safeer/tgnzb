@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block body %}
+    <div class="container pt-4">
+        <form action="{{ url_for('setting') }}" method="POST">
+            <h1 class="h1 mb-5">Settings in config.ini</h1>
+            {% for key, value in config.defaults %}
+                <div class="row mb-3">
+                    <label for="{{ key }}" class="col-sm-2 col-form-label">{{ key }}</label>
+                    <div class="col-sm-10">
+                      <input type="text" class="form-control" id="{{ key }}" name="{{ key }}" disabled value="{{ config.get(key) }}">
+                    </div>
+                </div>
+            {% endfor %}
+            <div class="row mb-3">
+                <div class="col-sm-2">
+                    <span class="fw-bold">Control</span>
+                </div>
+                <div class="col-sm-10">
+                    <button id="enable" class="btn btn-lg btn-primary">Edit</button>
+                    <button id="save" class="btn btn-lg btn-success" disabled>Save</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+    document.getElementById('enable').onclick = function () {
+        document.querySelectorAll('input').forEach(function (el) {
+            el.disabled = false;
+        });
+        document.getElementById('save').disabled = false;
+        document.getElementById('enable').disabled = true;
+    }
+    </script>
+
+{% endblock %}
