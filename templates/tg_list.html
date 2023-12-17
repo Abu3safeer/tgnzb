@@ -25,7 +25,7 @@
                 <th scope="col">{{ file[2] }}</th>
                 <th scope="col">{{ file[3] }}</th>
                 <th scope="col">{{ file[4] }}</th>
-                <th scope="col">{{ file[5] }}</th>
+                <th scope="col">{{ file[5] }} <a href="{{ url_for('tg_download', id=file[0]) }}">start</a></th>
             </tr>
         {% endfor %}
         </tbody>

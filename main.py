@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 import mysql.connector
 from tg import Tg
+import subprocess
 
 app = Flask(__name__)
 config = Config()
@@ -34,6 +35,23 @@ def tg_list():
     return render_template('tg_list.html', files=files)
 
 
+@app.route('/tg/download/<id>')
+def tg_download(id):
+    cursor.execute('SELECT * FROM tg WHERE id = %s', (id,))
+    file = cursor.fetchone()
+    message_url = "https://t.me/c/{}/{}".format(file[1], file[2])
+    file_name = file[4] or file[3]
+    # tdl download -n 1 -u https://t.me/c/1783815989/832 --template "[Nigel] Vlad Love - 04 [720p][D2F8C20B].mkv"
+    process = subprocess.Popen(
+        ['tdl', 'download', '-n', '1', '-u', message_url, '--template', file_name],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    while (line := process.stdout.readlines()) != '':
+        if len(line) > 0:
+            cursor.execute('UPDATE tg SET status = %s WHERE id = %s', (str(line), id))
+            mysql_connection.commit()
+            print(line)
+    return redirect(url_for('tg_list'))
+
 @app.route('/import/tg', methods=['GET', 'POST'])
 def import_tg():
     if request.method == 'GET':
@@ -51,7 +69,7 @@ def import_tg():
                 item.save(json_folder.joinpath(filename))
                 messages.append(('success', 'File {} uploaded successfully'.format(filename)))
             else:
-                messages.append(('danger', 'No file uploaded, or file "{NAME}" not allowed'.format_map({'NAME':item.filename})))
+                messages.append(('danger', 'No file uploaded, or file "{}" not allowed'.format(item.filename)))
 
         json_files = json_folder.rglob('*.json')
         for item in json_files:
