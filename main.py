@@ -3,27 +3,35 @@ from config_handler import Config
 from pathlib import Path
 from datetime import datetime
 import json
-import mariadb
+import mysql.connector
 from tg import Tg
 
 app = Flask(__name__)
 config = Config()
 try:
-    mariadb_connection = mariadb.connect(
+    mysql_connection = mysql.connector.connect(
         user=config.get('database user'),
         password=config.get('database password'),
         host=config.get('database address'),
         port=int(config.get('database port')),
         database=config.get('Database name')
     )
-    cursor = mariadb_connection.cursor()
-except mariadb.Error as e:
-    print(f"Error connecting to MariaDB Platform: {e}")
+    cursor = mysql_connection.cursor()
+except mysql.connector.Error as e:
+    print(f"Error connecting to Mysql Platform: {e}")
+    exit()
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/tg/list')
+def tg_list():
+    cursor.execute('SELECT * FROM tg LIMIT 10')
+    files = cursor.fetchall()
+    return render_template('tg_list.html', files=files)
 
 
 @app.route('/import/tg', methods=['GET', 'POST'])
@@ -33,7 +41,7 @@ def import_tg():
     elif request.method == 'POST':
         # These messages will be shown in the template
         messages = []
-        tg = Tg(mariadb_connection, cursor)
+        tg = Tg(mysql_connection, cursor)
         # Get and Create folder for uploaded json files
         json_folder = Path().cwd().joinpath(config.get('Json Folder'))
         json_folder.mkdir(exist_ok=True, parents=True)
@@ -55,7 +63,7 @@ def import_tg():
                 # Queries that will be used here
                 # check_query = ("SELECT * FROM tg WHERE `channel_id` = ? AND `message_id` = ?")
                 insert_query = ("INSERT INTO tg (`channel_id`, `message_id`, `message_file`, `message_text`) "
-                         "VALUES (?, ?, ?, ?)")
+                                "VALUES (%s, %s, %s, %s)")
                 channel_id = str(data.get('id'))
                 for tg_msg in data.get('messages'):  # type: dict
                     message_id = tg_msg.get('id')
@@ -65,7 +73,7 @@ def import_tg():
                     if tg.check_duplicate(channel_id, message_id) == 0:
                         cursor.execute(insert_query, (channel_id, message_id, message_file, message_text))
 
-                mariadb_connection.commit()
+                mysql_connection.commit()
                 messages.append(('success', 'File {} imported successfully'.format(item.name)))
             item.unlink()
         return render_template('import_tg.html', messages=messages)
